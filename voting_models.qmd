@@ -1,0 +1,166 @@
+---
+title: "Voting Predictions for 2012 Election"
+author: "Matthew Gunn"
+format: 
+  html:
+    embed-resources: true
+    code-fold: true
+    warning: false
+    message: false
+editor: visual
+bibliography: references.bib
+---
+
+## Abstract
+
+In this paper, I examine voting behavior by modeling the likelihood of someone voting for Obama in 2012, using both beliefs on key issues and demographic information. I use OLS and Probit models to compare which set of factors better predicts voting. The results show that beliefs, especially on economic and social issues, are more important for predicting voting than demographics. Combined models indicate that while some demographic factors, like race, matter, beliefs are still the main predictor. This study aims to improve understanding of why people vote the way they do, based on survey data analysis.
+
+## Introduction
+
+The election polls for the 2024 presidential election were always going to be close, but many were still giving Harris a very small edge over Trump. After Ann Selzer's poll which showed Harris beating Trump 47% to 44%, many were optimistic about the outcome. She's been known for her accurate polls, and been given an A+ rating from Nate Silver, which is why it was shocking when her (and many others) were wrong with their predictions for the election.
+
+In this paper I create a model that predicts the likelihood of an individual voting for Obama in 2012 based on their beliefs and stances on a few key issues, and also create a model that just includes identity and demographic information and compare the two. This work is to further understand a person's voting behavior, and to see what the main drivers are behind someone's choice for president.
+
+The first study I looked at is "Using Moral Foundations to Predict Voting Behavior: Regression Models from the 2012 U.S. Presidential Election". The study was found to be more effective than typical election forecasts and polls. The conclusion was that "individualizing morality predicted support for Barack Obama, whereas binding morality predicted support for Mitt Romney." Individualizing morality has core values of care and fairness, and binding morality has core values of deference to authority, in-group loyalty, and purity/sanctity. [@franks2015]
+
+The paper "Issues or Identity? Cognitive Foundations of Voter Choice" by Libby Jenke and Scott Huettel argues that traditional models of voter behavior, which focus on rational evaluation of policies, are too simplistic. Instead, they propose that voter decisions are shaped by a competition between policy positions and social identity. Using insights from cognitive science and neuroscience, they show that voters are influenced not only by policies but also by how voting reinforces their sense of identity and belonging. [@jenke2016]
+
+This next paper is titled "Do Beliefs About Sexual Orientation Predict Voting Behavior? Results From the 2016 U.S. Presidential Election". They found the "same kind of sexual orientation belief profiles that others found among undergraduate student respondents." The profiles are high DHI (discreteness, homogeneity, and informativeness), multidimensional beliefs, and naturalness-only. Some results were, higher negative attitudes towards women in the high DHI profile and around half planned to vote for Trump. 10% of people in multidimensional profile and less than 2% in the naturalness-only profile were planning to vote for Trump. [@grzanka2020]
+
+Then I read "Do Implicit Attitudes Predict Actual Voting Behavior Particularly for Undecided Voters?". Implicit attitudes are unconscious evaluations or feelings, and are often formed through past experiences. Explicit attitudes are deliberate, conscious evaluations, and are the product of rational thought processes. The conclusions were that "explicit attitudes predicted voting behavior better than implicit attitudes for both decided and undecided voters, and implicit attitudes predicted voting behavior better for decided than undecided voters." [@friese2012]
+
+Finally, I read "We are What We Consume: Predicting Independent Voters' Voting Preference From Their Media Diet Color". In a world where more people are not identifying with a particular political party, other methods of predicting voter preferences are more prevalent. The data from a nationwide panel survey conducted in Taiwan "affirm that their media diet 'color' in 2019 can predict independent voters' choices in 2020." [@chang2023]
+
+## Data
+
+The data used in this paper is from the `poliscidata::nes` dataset. It is an American National Election Survey that polled individuals about their political beliefs and behavior. It has 5,916 observations and nearly 400 variables. It includes categories of political beliefs: thoughts on economy, equality, environment, federal spending, immigration, the list goes on. It also includes demographic information like age, gender, ethnicity, home-owner status, etc. There are many variables that are questions about the current president and former president and whether the respondent thinks they have been doing a good job or not. There were also more partisan questions as well, but I chose to leave all these variables out because I felt they would overpower the models too much.[@poliscidata]
+
+## Empirical Strategy
+
+I will be making an OLS and Probit model with various hot-topic issue variables for the 2012 election to try to make an accurate model that predicts the likelihood of an individual voting for Obama. I will also make an OLS and Probit model with demographic variables to see which set seems to be more accurate. In order to find what variables may have the highest impact on the outcome I did some research on what topics were most important in 2012. I found that economy, taxes, federal spending, health care, environment, immigration, and social issues seemed to be the most important (in that general order) so I looked for variables in the dataset that would involve those issues.
+
+I did separate kitchen sink regressions for each category, picked some of the few most significant variables, and put them all into one beliefs model. I filtered the data to only people that voted in the 2012 election, and omitted the NA values for the variables I was looking at. The demographic regression includes most of the demographic variables provided. Finally, I combined both models into one gigantic one to see the combined results of beliefs and demographic information working together.
+
+## Results
+
+This first table shows the OLS and Probit models with belief variables. It includes the respondent's stance on spending, drilling, global warming, immigration, etc. The R squared value of the OLS model is .583, indicating a moderate fit. The AIC value of the Probit is better than the OLS but only by about 5 which is not enough to really make a difference.
+
+Majority of the significant variables here have negative coefficients like thoughts on federal spending and how economically conservative you are based on responses in the survey. Other categorical variables like favoring drilling, believing that global warming "probably hasn't been happening", and favoring immigration checks were all negatively significant. On the opposite side, opposing immigration checks, the abortion variable (how pro choice you are on a scale of 1-100 based on answers in the survey) and supporting gay marriage were all positively significant.
+
+```{r}
+library(tidyverse)
+library(poliscidata)
+library(stargazer)
+library(Stat2Data)
+library(margins)
+library(jtools)
+library(huxtable)
+
+##starting over frfr
+data("nes")
+nes2 <- nes |> filter(nes$voted2012 == "Voted") |> 
+  select(obama_vote, econcand_dwin, pres_econ, cses_spending, defsppr_self, fedspend_scale, inspre_self, presapp_health_x, envir_drill, envir_gwarm, envjob_self, immig_checks, immig_citizen, prochoice_scale, gay_marry) |>
+  na.omit()
+
+#releveling some variables
+nes2$econcand_dwin <- relevel(nes2$econcand_dwin, "2. Stay about the same")
+nes2$envir_drill <- relevel(nes2$envir_drill, "3. Neither favor nor oppose")
+nes2$immig_checks <- relevel(nes2$immig_checks, "3. Neither Favor or oppose")
+nes2$immig_citizen <- relevel(nes2$immig_citizen, "3. Neither favor or oppose")
+econreg <- lm(obama_vote ~ econcand_dwin, data = nes2)
+##tax variable was insignificant
+spendingreg <- lm(obama_vote ~ cses_spending + defsppr_self + fedspend_scale, data = nes2)
+healthreg <- lm(obama_vote ~ inspre_self, data = nes2)
+envirreg <- lm(obama_vote ~ envir_drill + envir_gwarm + envjob_self, data = nes2)
+immigreg <- lm(obama_vote ~ immig_checks + immig_citizen, data = nes2)
+socialreg <- lm(obama_vote ~ prochoice_scale + gay_marry, data = nes2)
+beliefsreg <- lm(obama_vote ~ cses_spending + defsppr_self + fedspend_scale +
+                   inspre_self +
+                   envir_drill + envir_gwarm + envjob_self +
+                   immig_checks + immig_citizen +
+                   prochoice_scale + gay_marry, data = nes2)
+beliefsprobit <- glm(obama_vote ~ cses_spending + defsppr_self + fedspend_scale +
+                       inspre_self +
+                       envir_drill + envir_gwarm + envjob_self +
+                       immig_checks + immig_citizen +
+                       prochoice_scale + gay_marry, family = binomial(link ="probit"), data = nes2)
+beliefsprobitmargins <- margins(beliefsprobit)
+export_summs(beliefsreg, beliefsprobitmargins,
+             number_format = "%.3f",
+             stars = c('***' = .01, '**' = .05, '*' = .1),
+             statistics = c(N = NULL, "AIC"),
+             model.names = c("OLS", "Probit"),
+             to.file = "html",
+             file.name = "table1.html")
+```
+
+This next table shows the OLS and Probit models with demographic variables. It includes age, highest level of education, marital status, race, gender, etc. The R squared variable for the OLS model is only .227, but the AIC value of the Probit is lower than the OLS by around 370. This indicates that the Probit model in this case will be more reliable, although both AIC values are higher than the two previous models, so it looks like an individual's stances on issues has a higher accuracy on predicting their voting choice than their demographic information.
+
+None of the age groups were found to be significant, but the trend was more positive coefficients for the younger ages and turned negative in the oldest group. Many of the answers to the highest education variable were significant, the trend being increasingly negative coefficients as level of education increased, except for the graduate degree group which was positive. All marital status categories were significant and all reduced the likelihood of the person voting for Obama, the biggest negative was married and living together. All race categories were positively significant, if you are black it gave you a 50% chance of voting for Obama by that alone. Number of kids at home, whether you owned/rented a home, and gender, were all insignificant.
+
+```{r}
+## moving onto demographic information
+# nes |> select(dem_age_group_r, dem_age3, dem_age6) |> summary()
+nes3 <- nes |> 
+  filter(nes$voted2012 == "Voted") |> 
+  select(obama_vote, dem_age6, dem_edugroup,
+                      dem_marital, dem_parents, dem_raceeth, dem_veteran,
+                      dem2_numchild, dem3_ownhome, gender) |> na.omit()
+nes3$dem_marital <- relevel(nes3$dem_marital, "6. Never married")
+nes3$dem_parents <- relevel(nes3$dem_parents, "3. Neither parent born in the U.S.")
+nes3$dem3_ownhome <- relevel(nes3$dem3_ownhome, "5. Other {SPECIFY}")
+demreg <- lm(obama_vote ~ dem_age6 + dem_edugroup + dem_marital + dem_parents + 
+               dem_raceeth + dem_veteran + dem2_numchild + dem3_ownhome + gender, data = nes3)
+demprobit <- glm(obama_vote ~ dem_age6 + dem_edugroup + dem_marital + dem_parents + 
+                   dem_raceeth + dem_veteran + dem2_numchild + dem3_ownhome + gender, family = binomial("probit"), data = nes3)
+demprobitmargins <- margins(demprobit)
+export_summs(demreg, demprobitmargins,
+             number_format = "%.3f",
+             stars = c('***' = .01, '**' = .05, '*' = .1),
+             statistics = c(N = NULL, "AIC"),
+             model.names = c("OLS", "Probit"),
+             to.file = "html",
+             file.name = "table2.html")
+```
+
+Let's take a look at these two types of variables combined to see what happens. We know that the beliefs model is doing more of the heavy lifting, and we think that adding the demographic model should help it be ever so slightly more accurate. Here the OLS model has an AIC value of 1453, and the Probit AIC is higher by about 107, so in this instance we should probably stick with using the OLS model. In addition, the R squared value of the OLS is .62.
+
+Much of these models look the same as the previous ones except many variables are less significant. The earlier ones stay the same, and race stays significant, but none of the other demographic variables are significant anymore. This implies that beliefs have more of an impact on how you vote, and based on demographic information alone it is difficult to predict which way a person will vote.
+
+```{r}
+##EVERYTHING
+nes4 <- nes |> 
+  filter(nes$voted2012 == "Voted") |> 
+  select(obama_vote, econcand_dwin, cses_spending, defsppr_self, fedspend_scale, 
+         inspre_self, envir_drill, envir_gwarm, envjob_self, immig_checks, immig_citizen, 
+         prochoice_scale, gay_marry, dem_age6, dem_edugroup, dem_marital, dem_parents, 
+         dem_raceeth, dem_veteran,dem2_numchild, dem3_ownhome, gender) |>
+  na.omit()
+nes4$econcand_dwin <- relevel(nes4$econcand_dwin, "2. Stay about the same")
+nes4$envir_drill <- relevel(nes4$envir_drill, "3. Neither favor nor oppose")
+nes4$immig_checks <- relevel(nes4$immig_checks, "3. Neither Favor or oppose")
+nes4$immig_citizen <- relevel(nes4$immig_citizen, "3. Neither favor or oppose")
+nes4$dem_marital <- relevel(nes4$dem_marital, "6. Never married")
+nes4$dem_parents <- relevel(nes4$dem_parents, "3. Neither parent born in the U.S.")
+nes4$dem3_ownhome <- relevel(nes4$dem3_ownhome, "5. Other {SPECIFY}")
+allreg <- lm(obama_vote ~ cses_spending + defsppr_self + fedspend_scale + 
+             inspre_self + envir_drill + envir_gwarm + envjob_self + immig_checks + immig_citizen + 
+             prochoice_scale + gay_marry + dem_age6 + dem_edugroup + dem_marital + dem_parents + 
+             dem_raceeth + dem_veteran + dem2_numchild + dem3_ownhome + gender, data = nes4)
+allprobit <- glm(obama_vote ~ cses_spending + defsppr_self + fedspend_scale + 
+               inspre_self + envir_drill + envir_gwarm + envjob_self + immig_checks + immig_citizen + 
+               prochoice_scale + gay_marry + dem_age6 + dem_edugroup + dem_marital + dem_parents + 
+               dem_raceeth + dem_veteran + dem2_numchild + dem3_ownhome + gender, family = binomial("probit"), data = nes4)
+allprobitmargins <- margins(allprobit)
+export_summs(allreg, allprobitmargins,
+             number_format = "%.3f",
+             stars = c('***' = .01, '**' = .05, '*' = .1),
+             statistics = c(N = NULL, "AIC"),
+             model.names = c("OLS", "Probit"),
+             to.file = "html",
+             file.name = "table3.html")
+```
+
+## Conclusions
+
+To sum up, I looked at a national election survey from 2012 and used a number of variables to see which types would give me the better predictor of the respondent voting for Obama, and what the result of the two types combined would be. Someone with strong economic and environmental beliefs were found to be the most significantly opposed to Obama, and someone very pro-choice and supporting gay marriage would be more toward Obama. The biggest demographic variable found to be significant was race, with age/gender/education not really having much of an impact when combined all together.

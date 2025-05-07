@@ -1,0 +1,111 @@
+---
+title: "Babynames Gospel Name Trends"
+author: "Matthew Gunn"
+format: 
+  html: 
+    embed-resources: true
+    toc: true
+editor: visual
+biliography: references.bib
+bibliography: references.bib
+---
+
+```{r}
+#| code-fold: true
+#| warning: false
+#| message: false
+library(tidyverse)
+library(babynames)
+
+baby2<-babynames %>% 
+  arrange(year,sex,-n) %>% 
+  group_by(sex,year) %>% 
+  mutate(popularity=rank(-n,ties.method="average"))
+
+babybible <- baby2 %>% 
+  filter(name %in% c("Matthew", "Mark", "Luke", "John")) %>% 
+  filter(sex=="M") %>% 
+  mutate(total_mmlj=sum(n)) %>% 
+  mutate(total_prop=sum(prop))
+
+```
+
+## Introduction
+
+In this paper I use the babynames dataset @babynames to analyze trends over time with the names Matthew, Mark, Luke, and John. My parents gave me a biblical name, as I'm sure many others did so I was interested to find data on my name as well as others related to it in the biblical setting.
+
+## The 4 Gospels relative to each other
+
+First I looked at the number of new male babies born each year with each of the Gospel names, starting at the year 1880. From Figure 1 it is clear that out of the four names, John was named more than the others each year out of majority of the time period. From this you can also notice a couple other things:
+
+-   An overall spike in popularity of all names around the beginning of the 1900s
+
+-   When John had its second spike is when Mark increased in popularity year after year
+
+-   John and Mark fall at similar rates as the popularity of the name Matthew increases steadily
+
+-   And through all this, the name Luke is experiencing very slow but reliable growth, and it looks like as John, Mark, and Matthew are all fizzling out in popularity, Luke may be staging a comeback.
+
+```{r}
+#| code-fold: true
+#| layout-ncol: 2
+babybible %>% 
+  ggplot(aes(x=year,y=n,color=name))+
+  geom_line()+
+  theme_classic()+
+  labs(
+    y="Number of babies born",
+    x="Year",
+    title="Babies born with biblical names",
+    caption="Figure 1"
+  )
+
+babybible %>% 
+  ggplot(aes(y=popularity,x=year,color=name))+
+  geom_path()+
+  scale_y_reverse()+
+  labs(
+    y="Rank among male names",
+    x="Year",
+    title="Popularity of biblical names",
+    caption="Figure 2"
+  )+
+  theme_classic()
+```
+
+## Matthew, Mark, Luke, and John compared to the big picture
+
+So after comparing the trend lines of each name to the others, I decided to see how they perform against other male baby names. **Figure 3** looks similar to **Figure 1**, with the bible names combined to form three separate peaks in combined popularity, and then fizzling off. I'm curious to find out what reasons are behind the three peaks seen in the graph.
+
+**Figure 4**, however, compares the biblical names to the rest of the male population. From this we can see that *although* there has been an increase in the number of bible babies, it has not increased at the same rate as other names did.
+
+```{r}
+#| code-fold: true
+#| layout-ncol: 2
+babybible %>% 
+  ggplot(aes(x=year,y=total_mmlj))+
+  geom_line(color="cadetblue",linewidth=2)+
+  theme_classic()+
+  labs(
+    y="Total Bible Babies",
+    x="Year",
+    title="Sum of Bible Babies born each year",
+    caption="Figure 3")
+
+babybible %>% 
+  ggplot(aes(y=total_prop,x=year))+
+  geom_path(color="darkolivegreen",linewidth=2)+
+  theme_classic()+
+  labs(
+    y="Total Proportion",
+    x="Year",
+    title="Proportion of biblical names per year",
+    caption="Figure 4"
+  )
+
+
+```
+
+## Conclusion
+
+To sum up, we took a look at the popularity of the names Matthew, Mark, Luke, and John and analyzed their trends. John maintains the most popular name out of the four, but if you compare the names to the rest of males born their popularity has declined over time.

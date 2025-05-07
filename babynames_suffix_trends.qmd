@@ -1,0 +1,250 @@
+---
+title: "Babynames Suffix Trends"
+author: "Matthew Gunn"
+format: 
+  html:
+    embed-resources: true
+    code-fold: true
+    warning: false
+    message: false
+editor: visual
+---
+
+## Introduction
+
+Which is more popular, Emilee, Emilie, Emiley, Emily, or Emileigh? My research question for this paper is, what is the most popular name suffix that sounds like "-lee", and how has it changed over time? There are many homophones of the suffix: -lie, -ley, -ly, -leigh to name a few. It took some trial and error to figure out the proper way to code this and how to graph the results, but eventually I got there.
+
+First I filtered the dataset to show just female names, and then created a new object for each suffix I wanted, using the str_ends function. Then it counts up the amount of names in each year that had the same ending. Rinse and repeat for each object, then merge all the data together and use pivot_longer to be simpler to code into a graph. This code can be seen in the first code chunk. The second chunk is how I created this next graph.
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(babynames)
+
+baby <- babynames |> ##create main object
+  group_by(year) |> 
+  filter(sex == "F")
+  # filter(str_starts(name, "Carl"))
+  # filter(str_starts(name, "Hal"))
+  # filter(str_starts(name, "Emil"))
+  # filter(str_starts(name, "Kayl"))
+  # filter(str_starts(name, "Kimberl"))
+  
+lee <- baby |> #create separate objects for suffixes
+  filter(str_ends(name, "lee")) |> 
+  mutate(nLee = sum(n)) |>
+  select(year, nLee) |>
+  distinct()
+
+lie <- baby |> 
+  filter(str_ends(name, "lie")) |> 
+  mutate(nLie = sum(n)) |> 
+  select(year, nLie) |>
+  distinct()
+
+ley <- baby |> 
+  filter(str_ends(name, "ley")) |> 
+  mutate(nLey = sum(n)) |> 
+  select(year, nLey) |> 
+  distinct()
+  
+ly <- baby |> 
+  filter(str_ends(name, "ly")) |> 
+  mutate(nLy = sum(n)) |> 
+  select(year, nLy) |> 
+  distinct()
+
+leigh <- baby |> 
+  filter(str_ends(name, "leigh")) |> 
+  mutate(nLeigh = sum(n)) |> 
+  select(year, nLeigh) |> 
+  distinct()
+
+lees <- lee #merge them all into one object
+lees <- merge(lees, ley, "year")
+lees <- merge(lees, ly, "year")
+lees <- merge(lees, lie, "year")
+lees <- full_join(lees, leigh, by = "year") #merges data without removing data from past years
+lees[is.na(lees)] <- 0 #turns NAs into 0 values
+
+lees <- lees |>
+  pivot_longer(cols = starts_with("n"), 
+               names_to = "suffix", 
+               values_to = "count", 
+               names_prefix = "n")
+```
+
+```{r}
+lees |> 
+  ggplot(aes(x = year, y = count, color = suffix))+
+  geom_line(linewidth = .7)+
+  theme_classic()+
+  labs(x = "Year", y = "Number of Babies Born", title = "Trends in Homophonic Name Suffixes")
+```
+
+## Bar Graphs
+
+I wanted to look at the data in a few different ways, so I made bar graphs of the amount of each suffix from 1900-1999, and then one for 2000-2017 to compare and contrast the recent changes in popularity. -ly remains and extremely popular ending, with -ley barely passing it in the 21st century. -lie has stayed around proportionally the same relative to the others, and -lee and -leigh have both grown in number but are still the two least popular.
+
+```{r}
+lees |> 
+  filter(year<=1999) |>
+  filter(year>=1900) |> 
+  ggplot(aes(x = suffix, y = count, fill = suffix))+
+  geom_col()+
+  labs(x = "Suffix", y = "Number of Babies Born", title = "Sum of Each Name Suffix from 1900-1999")+
+  theme_classic()
+
+lees |> 
+  filter(year >=2000) |> 
+  ggplot(aes(x = suffix, y = count, fill = suffix))+
+  geom_col()+
+  labs(x = "Suffix", y = "Number of Babies Born", title = "Sum of Each Name Suffix from 2000-2017")+
+  theme_classic()
+```
+
+## Emil-
+
+I also filtered the data to popular name prefixes that are likely to end in a variety of the suffixes that I have mentioned. First is a graph of Emil- names, and -ly is clearly the most popular suffix.
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(babynames)
+
+baby <- babynames |> ##create main object
+  group_by(year) |> 
+  filter(sex == "F") |> 
+  # filter(str_starts(name, "Carl"))
+  # filter(str_starts(name, "Hal"))
+  filter(str_starts(name, "Emil"))
+  # filter(str_starts(name, "Kayl"))
+  # filter(str_starts(name, "Kimberl"))
+
+
+lee <- baby |> #create separate objects for suffixes
+  filter(str_ends(name, "lee")) |> 
+  mutate(nLee = sum(n)) |>
+  select(year, nLee) |>
+  distinct()
+
+lie <- baby |> 
+  filter(str_ends(name, "lie")) |> 
+  mutate(nLie = sum(n)) |> 
+  select(year, nLie) |>
+  distinct()
+
+ley <- baby |> 
+  filter(str_ends(name, "ley")) |> 
+  mutate(nLey = sum(n)) |> 
+  select(year, nLey) |> 
+  distinct()
+  
+ly <- baby |> 
+  filter(str_ends(name, "ly")) |> 
+  mutate(nLy = sum(n)) |> 
+  select(year, nLy) |> 
+  distinct()
+
+leigh <- baby |> 
+  filter(str_ends(name, "leigh")) |> 
+  mutate(nLeigh = sum(n)) |> 
+  select(year, nLeigh) |> 
+  distinct()
+
+lees <- lee #merge them all into one object
+lees <- merge(lees, ley, "year")
+lees <- merge(lees, ly, "year")
+lees <- merge(lees, lie, "year")
+lees <- full_join(lees, leigh, by = "year") #merges data without removing data from past years
+lees[is.na(lees)] <- 0 #turns NAs into 0 values
+
+lees <- lees |> #pivots data to be easier to graph
+  pivot_longer(cols = starts_with("n"), 
+               names_to = "suffix", 
+               values_to = "count", 
+               names_prefix = "n")
+
+lees |> 
+  ggplot(aes(x = year, y = count, color = suffix))+
+  geom_line(linewidth = .7)+
+  theme_classic()+
+  labs(x = "Year", y = "Number of Babies Born", title = "Trends in Homophonic Name Suffixes with Emil- prefix")
+
+```
+
+## Kayl-
+
+There is more variation in the Kayl- suffixes. Kaylee is the most popular variation, and Kayleigh second popular. An interesting thing to note is it looks like there were near zero Kayl- names around 2015, except for Kayleigh.
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(babynames)
+
+baby <- babynames |> ##create main object
+  group_by(year) |> 
+  filter(sex == "F") |> 
+  # filter(str_starts(name, "Carl"))
+  # filter(str_starts(name, "Hal"))
+  # filter(str_starts(name, "Emil"))
+  filter(str_starts(name, "Kayl"))
+  # filter(str_starts(name, "Kimberl"))
+
+
+lee <- baby |> #create separate objects for suffixes
+  filter(str_ends(name, "lee")) |> 
+  mutate(nLee = sum(n)) |>
+  select(year, nLee) |>
+  distinct()
+
+lie <- baby |> 
+  filter(str_ends(name, "lie")) |> 
+  mutate(nLie = sum(n)) |> 
+  select(year, nLie) |>
+  distinct()
+
+ley <- baby |> 
+  filter(str_ends(name, "ley")) |> 
+  mutate(nLey = sum(n)) |> 
+  select(year, nLey) |> 
+  distinct()
+  
+ly <- baby |> 
+  filter(str_ends(name, "ly")) |> 
+  mutate(nLy = sum(n)) |> 
+  select(year, nLy) |> 
+  distinct()
+
+leigh <- baby |> 
+  filter(str_ends(name, "leigh")) |> 
+  mutate(nLeigh = sum(n)) |> 
+  select(year, nLeigh) |> 
+  distinct()
+
+lees <- lee #merge them all into one object
+lees <- merge(lees, ley, "year")
+lees <- merge(lees, ly, "year")
+lees <- merge(lees, lie, "year")
+lees <- full_join(lees, leigh, by = "year") #merges data without removing data from past years
+lees[is.na(lees)] <- 0 #turns NAs into 0 values
+
+lees <- lees |> #pivots data to be easier to graph
+  pivot_longer(cols = starts_with("n"), 
+               names_to = "suffix", 
+               values_to = "count", 
+               names_prefix = "n")
+
+lees |> 
+  ggplot(aes(x = year, y = count, color = suffix))+
+  geom_line(linewidth = .7)+
+  theme_classic()+
+  labs(x = "Year", y = "Number of Babies Born", title = "Trends in Homophonic Name Suffixes with Kayl- prefix")
+
+```
