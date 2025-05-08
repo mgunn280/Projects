@@ -7,7 +7,6 @@ format:
     toc: true
 editor: visual
 biliography: references.bib
-bibliography: references.bib
 ---
 
 ```{r}
